@@ -5,10 +5,14 @@ pipeline {
         }
     }
 
+environment {
+    PATH = "/opt/apache-maven-3.9.6/bin:$PATH"
+}    
+
     stages {
-        stage('Clone Ttrend Repo') {
+        stage('Build') {
             steps {
-                git branch: 'main', url: 'https://github.com/aibidapo/tweet-trend'
+                sh 'mvn clean deploy'
             }
         }
     }
