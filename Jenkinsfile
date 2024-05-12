@@ -18,16 +18,16 @@ environment {
                 sh 'mvn clean deploy'
             }
         }
-        // stage('SonarQube analysis') {
-        //     environment{
-        //         scannerHome = tool 'ai-cloudops-sonar-scanner'
-        //     }
-        //         steps{
-        //             withSonarQubeEnv('ai-cloudops-sonarqube-server') { 
-        //                 sh "${scannerHome}/bin/sonar-scanner"
-        //         }
-        //     }
-      // }      
+        stage('SonarQube analysis') {
+            environment{
+                scannerHome = tool 'ai-cloudops-sonar-scanner'
+            }
+                steps{
+                    withSonarQubeEnv('ai-cloudops-sonarqube-server') { 
+                        sh "${scannerHome}/bin/sonar-scanner"
+                }
+            }
+      }      
       
         stage("Jar Publish") {
             steps {
