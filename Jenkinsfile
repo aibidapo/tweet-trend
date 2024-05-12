@@ -27,8 +27,8 @@ environment {
         //                 sh "${scannerHome}/bin/sonar-scanner"
         //         }
         //     }
-        // }        
-    }
+      // }      
+      
         stage("Jar Publish") {
             steps {
                 script {
@@ -54,4 +54,5 @@ environment {
                 }
             }   
         }      
+}
 }
