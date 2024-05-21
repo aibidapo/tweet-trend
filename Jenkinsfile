@@ -2,7 +2,6 @@ def registry = 'https://aicloudops.jfrog.io'
 def imageName = 'aicloudops.jfrog.io/artifactory/ai-cloudops-docker-local/ttrend'
 def version   = '2.1.2'
 
-
 pipeline {
     agent {
         node {
@@ -12,6 +11,7 @@ pipeline {
 
     environment {
         PATH = "/opt/apache-maven-3.9.6/bin:$PATH"
+        DOCKER_BUILDKIT = '1' // Enable BuildKit
     }    
 
     stages {
@@ -23,13 +23,14 @@ pipeline {
             }
         }
 
-        stage("Test"){
+        stage("Test") {
             steps {
                 echo '<--------------- UnitTest Started --------------->'
                 sh 'mvn surefire-report:report'
                 echo '<--------------- UnitTest Completed --------------->'
             }
         }
+
         stage('SonarQube analysis') {
             environment {
                 scannerHome = tool 'ai-cloudops-sonar-scanner'
@@ -48,16 +49,16 @@ pipeline {
             }
         }
 
-        stage("Quality Gate"){
+        stage("Quality Gate") {
             steps {
                 script {
-                timeout(time: 1, unit: 'HOURS') { // Just in case something goes wrong, pipeline will be killed after a timeout
-            def qg = waitForQualityGate() // Reuse taskId previously collected by withSonarQubeEnv
-            if (qg.status != 'OK') {
-            error "Pipeline aborted due to quality gate failure: ${qg.status}"
-            }
-        }
-        }
+                    timeout(time: 1, unit: 'HOURS') { // Just in case something goes wrong, pipeline will be killed after a timeout
+                        def qg = waitForQualityGate() // Reuse taskId previously collected by withSonarQubeEnv
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                        }
+                    }
+                }
             }
         }              
       
@@ -66,7 +67,7 @@ pipeline {
                 script {
                     echo '<--------------- Jar Publish Started --------------->'
                     def server = Artifactory.newServer url: registry + "/artifactory", credentialsId: "artifactory-cred"
-                    def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}";
+                    def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}"
                     def uploadSpec = """{
                           "files": [
                             {
@@ -86,30 +87,29 @@ pipeline {
             }   
         }
 
-
-        stage(" Docker Build ") {
-          steps {
-            script {
-               echo '<--------------- Docker Build Started --------------->'
-               app = docker.build(imageName+":"+version)
-               echo '<--------------- Docker Build Ends --------------->'
-            }
-          }
-        }
-
-        stage (" Docker Publish "){
+        stage("Docker Build") {
             steps {
                 script {
-                   echo '<--------------- Docker Publish Started --------------->'  
-                    docker.withRegistry(registry, 'artifactory-cred'){
-                        app.push()
-                    }    
-                   echo '<--------------- Docker Publish Ended --------------->'  
+                    echo '<--------------- Docker Build Started --------------->'
+                    // Ensure Docker Buildx is initialized
+                    sh 'docker buildx create --use || true'
+                    // Build the Docker image using BuildKit
+                    app = docker.build(imageName + ":" + version)
+                    echo '<--------------- Docker Build Ends --------------->'
                 }
             }
         }
 
-
-
+        stage("Docker Publish") {
+            steps {
+                script {
+                    echo '<--------------- Docker Publish Started --------------->'  
+                    docker.withRegistry(registry, 'artifactory-cred') {
+                        app.push()
+                    }    
+                    echo '<--------------- Docker Publish Ended --------------->'  
+                }
+            }
+        }
     }
 }
