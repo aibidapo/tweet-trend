@@ -1,5 +1,6 @@
 def registry = 'aicloudops.jfrog.io'
-def imageName = 'aicloudops.jfrog.io/artifactory/ai-cloudops-docker-local/ttrend'
+def repository = 'ai-cloudops-docker-local'
+def imageName = "${registry}/${repository}/ttrend"
 def version = '2.1.2'
 
 pipeline {
@@ -87,20 +88,29 @@ pipeline {
             }   
         }
 
-        stage("Docker Build and Push") {
+        stage("Docker Build") {
             steps {
                 script {
-                    echo '<--------------- Docker Build and Push Started --------------->'
+                    echo '<--------------- Docker Build Started --------------->'
                     // Ensure Buildx builder is initialized
                     sh 'docker buildx create --use || true'
                     sh 'docker buildx inspect --bootstrap'
+                    // Build the Docker image using BuildKit
+                    sh "docker buildx build --output type=docker -t ${imageName}:${version} ."
+                    echo '<--------------- Docker Build Ends --------------->'
+                }
+            }
+        }
 
+        stage("Docker Push") {
+            steps {
+                script {
+                    echo '<--------------- Docker Push Started --------------->'
                     docker.withRegistry("https://${registry}", 'artifactory-cred') {
-                        // Build and push the Docker image using BuildKit
-                        sh "docker buildx build --push -t ${imageName}:${version} ."
+                        // Push the Docker image to the registry
+                        sh "docker push ${imageName}:${version}"
                     }
-                    
-                    echo '<--------------- Docker Build and Push Ends --------------->'
+                    echo '<--------------- Docker Push Ends --------------->'
                 }
             }
         }
