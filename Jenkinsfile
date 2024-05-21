@@ -1,6 +1,6 @@
 def registry = 'aicloudops.jfrog.io'
 def imageName = 'aicloudops.jfrog.io/artifactory/ai-cloudops-docker-local/ttrend'
-def version   = '2.1.2'
+def version = '2.1.2'
 
 pipeline {
     agent {
@@ -67,7 +67,7 @@ pipeline {
                 script {
                     echo '<--------------- Jar Publish Started --------------->'
                     def server = Artifactory.newServer url: 'https://' + registry + "/artifactory", credentialsId: "artifactory-cred"
-                    def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}";
+                    def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}"
                     def uploadSpec = """{
                           "files": [
                             {
@@ -84,15 +84,20 @@ pipeline {
                     server.publishBuildInfo(buildInfo)
                     echo '<--------------- Jar Publish Ended --------------->'  
                 }
-            }
+            }   
         }
 
         stage("Docker Build and Push") {
             steps {
                 script {
                     echo '<--------------- Docker Build and Push Started --------------->'
-                    // Ensure buildx builder is created and used
-                    sh 'docker buildx create --name mybuilder --use || true'
+                    // Check if buildx builder already exists
+                    def builderExists = sh(script: 'docker buildx inspect mybuilder || echo "not found"', returnStdout: true).trim()
+                    if (builderExists.contains("not found")) {
+                        sh 'docker buildx create --name mybuilder --use'
+                    } else {
+                        sh 'docker buildx use mybuilder'
+                    }
                     sh 'docker buildx inspect --bootstrap'
 
                     docker.withRegistry("https://${registry}", 'artifactory-cred') {
