@@ -1,5 +1,6 @@
 def registry = 'https://aicloudops.jfrog.io'
-def imageName = 'aicloudops.jfrog.io/ai-cloudops-docker-local/ttrend'
+def imageName = 'https://aicloudops.jfrog.io/artifactory/ai-cloudops-docker-local/ttrend'
+
 def version   = '2.1.2'
 
 pipeline {
