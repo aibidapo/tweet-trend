@@ -91,18 +91,13 @@ pipeline {
             steps {
                 script {
                     echo '<--------------- Docker Build and Push Started --------------->'
-                    // Check if buildx builder already exists
-                    def builderExists = sh(script: 'docker buildx inspect mybuilder || echo "not found"', returnStdout: true).trim()
-                    if (builderExists.contains("not found")) {
-                        sh 'docker buildx create --name mybuilder --use'
-                    } else {
-                        sh 'docker buildx use mybuilder'
-                    }
+                    // Ensure Buildx builder is initialized
+                    sh 'docker buildx create --use || true'
                     sh 'docker buildx inspect --bootstrap'
 
                     docker.withRegistry("https://${registry}", 'artifactory-cred') {
                         // Build and push the Docker image using BuildKit
-                        sh "docker buildx build --builder mybuilder --push -t ${imageName}:${version} ."
+                        sh "docker buildx build --push -t ${imageName}:${version} ."
                     }
                     
                     echo '<--------------- Docker Build and Push Ends --------------->'
