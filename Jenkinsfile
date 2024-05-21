@@ -84,29 +84,23 @@ pipeline {
                     server.publishBuildInfo(buildInfo)
                     echo '<--------------- Jar Publish Ended --------------->'  
                 }
-            }   
-        }
-
-        stage("Docker Build") {
-            steps {
-                script {
-                    echo '<--------------- Docker Build Started --------------->'
-                    // Ensure buildx builder is created and used
-                    sh 'docker buildx create --name mybuilder --use || true'
-                    sh 'docker buildx inspect --bootstrap'
-                    // Build the Docker image using BuildKit and push it to the registry
-                    app = docker.build(imageName + ":" + version, "--builder mybuilder --push .")
-                    echo '<--------------- Docker Build Ends --------------->'
-                }
             }
         }
 
-        stage("Docker Publish") {
+        stage("Docker Build and Push") {
             steps {
                 script {
-                    echo '<--------------- Docker Publish Started --------------->'
-                    // Since the image was already pushed during the build, this stage can be used to verify the push or perform additional actions if needed.
-                    echo '<--------------- Docker Publish Ended --------------->'
+                    echo '<--------------- Docker Build and Push Started --------------->'
+                    // Ensure buildx builder is created and used
+                    sh 'docker buildx create --name mybuilder --use || true'
+                    sh 'docker buildx inspect --bootstrap'
+
+                    docker.withRegistry("https://${registry}", 'artifactory-cred') {
+                        // Build and push the Docker image using BuildKit
+                        sh "docker buildx build --builder mybuilder --push -t ${imageName}:${version} ."
+                    }
+                    
+                    echo '<--------------- Docker Build and Push Ends --------------->'
                 }
             }
         }
