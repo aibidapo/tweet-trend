@@ -11,7 +11,6 @@ pipeline {
 
     environment {
         PATH = "/opt/apache-maven-3.9.6/bin:$PATH"
-        DOCKER_BUILDKIT = '1' // Enable BuildKit
     }    
 
     stages {
@@ -23,7 +22,7 @@ pipeline {
             }
         }
 
-        stage("Test") {
+        stage("Test"){
             steps {
                 echo '<--------------- UnitTest Started --------------->'
                 sh 'mvn surefire-report:report'
@@ -49,7 +48,7 @@ pipeline {
             }
         }
 
-        stage("Quality Gate") {
+        stage("Quality Gate"){
             steps {
                 script {
                     timeout(time: 1, unit: 'HOURS') { // Just in case something goes wrong, pipeline will be killed after a timeout
@@ -60,14 +59,14 @@ pipeline {
                     }
                 }
             }
-        }              
-      
+        }
+
         stage("Jar Publish") {
             steps {
                 script {
                     echo '<--------------- Jar Publish Started --------------->'
                     def server = Artifactory.newServer url: registry + "/artifactory", credentialsId: "artifactory-cred"
-                    def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}"
+                    def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}";
                     def uploadSpec = """{
                           "files": [
                             {
@@ -87,20 +86,20 @@ pipeline {
             }   
         }
 
-        stage("Docker Build") {
+        stage(" Docker Build ") {
             steps {
                 script {
                     echo '<--------------- Docker Build Started --------------->'
-                    // Ensure Docker Buildx is initialized
-                    sh 'docker buildx create --use || true'
-                    // Build the Docker image using BuildKit
-                    app = docker.build(imageName + ":" + version)
+                    // Ensure buildx builder is created and used
+                    sh 'docker buildx create --name mybuilder --use || true'
+                    sh 'docker buildx inspect --bootstrap'
+                    app = docker.build(imageName + ":" + version, "--builder mybuilder .")
                     echo '<--------------- Docker Build Ends --------------->'
                 }
             }
         }
 
-        stage("Docker Publish") {
+        stage(" Docker Publish ") {
             steps {
                 script {
                     echo '<--------------- Docker Publish Started --------------->'  
